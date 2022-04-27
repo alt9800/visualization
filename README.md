@@ -31,7 +31,7 @@
 ## 作ったもの
 このリポジトリに内包されるwebコンテンツのホスティング先を示す。
 
-||page|deteil|
-|:---:|:---:|:---:|
-|japan-tv|https://alt9800.github.io/visualization/japan-tv/|各都道府県における民放テレビ局をd3.jsで可視化した|
-||||
+||page|deteil|data|
+|:---:|:---:|:---:|:---:|
+|japan-tv|https://alt9800.github.io/visualization/japan-tv/|各都道府県における民放テレビ局をd3.jsで可視化した|-|
+|shibuya-plateau|https://alt9800.github.io/visualization/shibuya-plateau/|plateauから取得した渋谷中心部のデータをwebで遊べるようにした|https://www.geospatial.jp/ckan/dataset/plateau-tokyo23ku-fbx-2020|
