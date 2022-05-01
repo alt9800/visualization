@@ -40,7 +40,7 @@
                 .attr("x", d => {return aProjection([d.x,d.y])[0]})
                 .attr("y", d => {return aProjection([d.x,d.y])[1]})
                 .attr("text-anchor","middle")
-                .attr('font-size','10pt');
+                .attr('font-size','22pt');
 
         //ズームイベント設定    
         var zoom = d3.zoom().on('zoom', function(){
@@ -49,7 +49,7 @@
             map2.attr("x", d => {return aProjection([d.x,d.y])[0]})
                 .attr("y", d => {return aProjection([d.x,d.y])[1]})
                 .attr("text-anchor","middle")
-                .attr('font-size','10pt');
+                .attr('font-size','22pt');
         });
         svg.call(zoom);
 
@@ -61,7 +61,7 @@
             map2.attr("x", d => {return aProjection([d.x,d.y])[0]})
                 .attr("y", d => {return aProjection([d.x,d.y])[1]})
                 .attr("text-anchor","middle")
-                .attr('font-size','10pt');
+                .attr('font-size','22pt');
         });
         map.call(drag);
       }
