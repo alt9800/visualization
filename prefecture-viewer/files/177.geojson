@@ -1,0 +1,10 @@
+{"type":"FeatureCollection", "features": [
+{"type":"Feature","geometry":{"type":"LineString","coordinates":[[135.32772222,35.45233333],[135.32744444,35.45066667]]},"properties":{"N01_001":"2","N01_002":"国道１７７号線","N01_003":"","N01_004":""}},
+{"type":"Feature","geometry":{"type":"LineString","coordinates":[[135.32744444,35.45288889],[135.32772222,35.45233333]]},"properties":{"N01_001":"2","N01_002":"国道１７７号線","N01_003":"","N01_004":""}},
+{"type":"Feature","geometry":{"type":"LineString","coordinates":[[135.32494444,35.45594444],[135.32772222,35.45372222]]},"properties":{"N01_001":"2","N01_002":"国道１７７号線","N01_003":"","N01_004":""}},
+{"type":"Feature","geometry":{"type":"LineString","coordinates":[[135.32772222,35.45372222],[135.32744444,35.45288889]]},"properties":{"N01_001":"2","N01_002":"国道１７７号線","N01_003":"","N01_004":""}},
+{"type":"Feature","geometry":{"type":"LineString","coordinates":[[135.32772222,35.45233333],[135.32744444,35.45066667]]},"properties":{"N01_001":"2","N01_002":"国道１７７号線","N01_003":"","N01_004":""}},
+{"type":"Feature","geometry":{"type":"LineString","coordinates":[[135.32744444,35.45288889],[135.32772222,35.45233333]]},"properties":{"N01_001":"2","N01_002":"国道１７７号線","N01_003":"","N01_004":""}},
+{"type":"Feature","geometry":{"type":"LineString","coordinates":[[135.32494444,35.45594444],[135.32772222,35.45372222]]},"properties":{"N01_001":"2","N01_002":"国道１７７号線","N01_003":"","N01_004":""}},
+{"type":"Feature","geometry":{"type":"LineString","coordinates":[[135.32772222,35.45372222],[135.32744444,35.45288889]]},"properties":{"N01_001":"2","N01_002":"国道１７７号線","N01_003":"","N01_004":""}}
+]}
