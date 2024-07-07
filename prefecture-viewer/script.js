@@ -1,4 +1,4 @@
-const { DeckGL, ScatterplotLayer, PathLayer } = deck;
+const { DeckGL, PathLayer } = deck;
 
 const requestURL = './files/';
 let allGeoJsonData = {};
@@ -11,7 +11,7 @@ function updateLayers(routeNumber) {
   const geo = allGeoJsonData[routeNumber];
   if (!geo) {
     console.log(`No data found for route ${routeNumber}`);
-    deckInstance.setProps({ layers: initialLayers });
+    deckInstance.setProps({ layers: [] });
     updateCurrentRouteDisplay(routeNumber);
     return;
   }
@@ -30,13 +30,6 @@ function updateLayers(routeNumber) {
   }
 
   const newLayers = [
-    new ScatterplotLayer({
-      data: [
-        { position: [135.7006491212362, 34.92583726748164], color: [255, 0, 0, 75], radius: 5000 }
-      ],
-      getColor: d => d.color,
-      getRadius: d => d.radius
-    }),
     new PathLayer({
       id: `route-${routeNumber}`,
       data: data,
@@ -87,16 +80,6 @@ let fileSelect = document.getElementById('file');
 fileSelect.options[0].selected = true;
 fileSelect.addEventListener('change', valueChange);
 
-let initialLayers = [
-  new ScatterplotLayer({
-    data: [
-      { position: [135.7006491212362, 34.92583726748164], color: [255, 0, 0, 75], radius: 5000 }
-    ],
-    getColor: d => d.color,
-    getRadius: d => d.radius
-  })
-];
-
 let deckInstance = new DeckGL({
   container: 'map',
   mapStyle: 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json',
@@ -106,20 +89,10 @@ let deckInstance = new DeckGL({
     zoom: 5
   },
   controller: true,
-  layers: initialLayers
+  layers: []
 });
 
 const currentRouteElement = document.getElementById('currentRoute');
-
-
-window.onload = async function() {
-  await loadAllGeoJsonFiles();
-  updateCurrentRouteDisplay('-');
-
-  const animateButton = document.getElementById('animateButton');
-  animateButton.addEventListener('click', startAnimation);
-
-};
 
 function startAnimation() {
   if (!isAnimating) {
@@ -136,7 +109,7 @@ function animateRoutes() {
     setTimeout(() => {
       currentRoute++;
       animateRoutes();
-    }, 200); // 200ms後に次のルートに切り替え
+    }, 300); // 300ms後に次のルートに切り替え
   } else {
     console.log("All routes displayed");
     isAnimating = false;
@@ -155,3 +128,14 @@ function updateCurrentRouteDisplay(route = currentRoute) {
     console.error('currentRoute element not found');
   }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  const animateButton = document.getElementById('animateButton');
+  if (animateButton) {
+    animateButton.addEventListener('click', startAnimation);
+  } else {
+    console.error('アニメーション開始ボタンが見つかりません');
+  }
+  
+  loadAllGeoJsonFiles();
+});
