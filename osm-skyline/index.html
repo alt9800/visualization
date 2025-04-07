@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenStreetMap Contributions</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #1f2937;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+            transition: all 0.3s ease;
+        }
+
+        #info.collapsed {
+            max-height: 35px;
+            overflow: hidden;
+        }
+
+        #info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        #info-toggle {
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* コントロールパネルを削除 */
+
+        .settings {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .settings.collapsed {
+            max-height: 35px;
+            overflow: hidden;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .toggle-btn {
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .settings label {
+            display: block;
+            margin: 5px 0;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #hover-info {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div id="info">
+            <div id="info-header">
+                <h2 style="margin: 0; white-space: nowrap;">OSM Contributions</h2>
+                <span id="info-toggle" style="margin-left: 10px;">≡</span>
+            </div>
+            <div id="info-content">
+                <p id="username">User: </p>
+                <p id="total-commits">Total Commits: </p>
+                <p id="hover-info"></p>
+            </div>
+        </div>
+
+        <div class="settings">
+            <div class="settings-header">
+                <h3 style="margin: 0;">Controls</h3>
+                <span class="toggle-btn" style="margin-left: 10px;">≡</span>
+            </div>
+            <div class="settings-content">
+                <label>
+                    Username:
+                    <input type="text" id="user-input" placeholder="OSM Username">
+                </label>
+                <label>
+                    Year:
+                    <select id="year-select">
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                    </select>
+                </label>
+                <label>
+                    Query Type:
+                    <select id="query-type">
+                        <option value="simple">All Changes</option>
+                        <option value="building">Buildings Only</option>
+                    </select>
+                </label>
+                <label>
+                    Color Theme:
+                    <select id="color-theme">
+                        <option value="default">Default</option>
+                        <option value="neon">Neon</option>
+                        <option value="spring">Spring</option>
+                    </select>
+                </label>
+                <button id="apply-settings">Apply</button>
+                <button id="download-stl">Download STL</button>
+                <button id="reset-camera">Reset View</button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <h3>Loading Data...</h3>
+            <p>Fetching commits from OpenStreetMap...</p>
+            <p id="loading-details"></p>
+        </div>
+    </div>
+
+    <!-- Three.js ライブラリの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+
+    <script>
+        // グローバル変数
+        let scene, camera, renderer, controls;
+        let contributionsGroup, baseGroup;
+        let raycaster, mouse;
+        let highlightedCell = null;
+        let weeklyCommitData = null;
+        let username = '';
+        let year = '2023';
+        let queryType = 'simple';
+        let colorTheme = 'default';
+
+        // グリッドのサイズ設定
+        const GRID_WEEKS = 52;     // 年間の週数
+        const GRID_DAYS = 7;       // 1週間の日数
+        const CELL_SIZE = 0.8;     // 1セルのサイズ
+        const CELL_GAP = 0.2;      // セル間のスペース
+        const MIN_HEIGHT = 0.5;    // 最小高さ
+        const MAX_HEIGHT = 5.0;    // 最大高さ
+
+        // グリッドの実際のサイズを計算
+        const GRID_WIDTH = GRID_WEEKS * (CELL_SIZE + CELL_GAP);
+        const GRID_DEPTH = GRID_DAYS * (CELL_SIZE + CELL_GAP);
+
+        // 土台のサイズをグリッドに基づいて計算
+        const MARGIN_SIDE = 3;      // 側面のマージン
+        const MARGIN_TOP = 1.0;     // 上面のマージン
+        const BASE_WIDTH = GRID_WIDTH + MARGIN_SIDE * 2;
+        const BASE_DEPTH = GRID_DEPTH + MARGIN_SIDE * 2;
+        const BASE_HEIGHT = 5;
+
+        // DOM要素
+        const loadingElement = document.getElementById('loading');
+        const loadingDetailsElement = document.getElementById('loading-details');
+        const usernameElement = document.getElementById('username');
+        const totalCommitsElement = document.getElementById('total-commits');
+        const hoverInfoElement = document.getElementById('hover-info');
+
+        // カラーテーマ機能
+        function getCommitColor(commits, theme) {
+            const intensity = Math.min(commits / 10, 1);
+
+            switch (theme) {
+                case 'neon':
+                    // ネオンテーマ - 明るく発光するような色
+                    return new THREE.Color(
+                        0.2 + intensity * 0.8,
+                        0.5 + intensity * 0.5,
+                        0.8 + intensity * 0.2
+                    );
+
+                case 'spring':
+                    // 春テーマ - 桜やパステルカラー
+                    return new THREE.Color(
+                        0.9 - intensity * 0.1,
+                        0.7 + intensity * 0.2,
+                        0.7 + intensity * 0.2
+                    );
+
+                case 'default':
+                default:
+                    // デフォルト - 緑系
+                    return new THREE.Color(
+                        intensity * 0.3,
+                        0.5 + intensity * 0.5,
+                        intensity * 0.3
+                    );
+            }
+        }
+
+        // テーマに基づいて背景と台座の色を設定する関数
+        function applyColorTheme(theme) {
+            switch (theme) {
+                case 'neon':
+                    // ネオンテーマ - 暗い背景に明るい台座
+                    scene.background = new THREE.Color(0x0a0a1e);
+                    // 台座の色を更新
+                    if (baseGroup.children.length > 0) {
+                        const baseMesh = baseGroup.children[0];
+                        baseMesh.material.color.set(0x3311aa);
+                        baseMesh.material.specular.set(0x8866ff);
+                        baseMesh.material.shininess = 100;
+                    }
+                    break;
+
+                case 'spring':
+                    // 春テーマ - 明るい空色の背景とパステルカラーの台座
+                    scene.background = new THREE.Color(0xc5e8f5);
+                    // 台座の色を更新
+                    if (baseGroup.children.length > 0) {
+                        const baseMesh = baseGroup.children[0];
+                        baseMesh.material.color.set(0xffcce0);
+                        baseMesh.material.specular.set(0xffffff);
+                        baseMesh.material.shininess = 50;
+                    }
+                    break;
+
+                case 'default':
+                default:
+                    // デフォルトテーマ
+                    scene.background = new THREE.Color(0x1f2937);
+                    // 台座の色を更新
+                    if (baseGroup.children.length > 0) {
+                        const baseMesh = baseGroup.children[0];
+                        baseMesh.material.color.set(0x78b0ff);
+                        baseMesh.material.specular.set(0xaaccff);
+                        baseMesh.material.shininess = 40;
+                    }
+                    break;
+            }
+        }
+
+        // 初期化
+        init();
+        animate();
+
+        function init() {
+            // ローディング表示を非表示
+            loadingElement.style.display = 'none';
+
+            // シーン作成
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1f2937);
+
+            // カメラ設定
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 30, 50);
+
+            // レンダラー設定
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('container').appendChild(renderer.domElement);
+
+            // コントロール設定
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+            controls.rotateSpeed = 0.7;
+            controls.minDistance = 10;
+            controls.maxDistance = 100;
+
+            // レイキャスターの設定
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // ライティング設定
+            const ambientLight = new THREE.AmbientLight(0x606060, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(10, 20, 15);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.near = 1;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -30;
+            directionalLight.shadow.camera.right = 30;
+            directionalLight.shadow.camera.top = 30;
+            directionalLight.shadow.camera.bottom = -30;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            // 影を柔らかく
+            directionalLight.shadow.radius = 2;
+            scene.add(directionalLight);
+
+            // 補助光を追加
+            const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+            fillLight.position.set(-5, 10, -10);
+            scene.add(fillLight);
+
+            // コントリビューショングループ
+            contributionsGroup = new THREE.Group();
+            scene.add(contributionsGroup);
+
+            // ベースグループ
+            baseGroup = new THREE.Group();
+            scene.add(baseGroup);
+
+            // イベントリスナー
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousemove', onMouseMove);
+
+            document.getElementById('reset-camera').addEventListener('click', resetCamera);
+            document.getElementById('apply-settings').addEventListener('click', applySettings);
+            document.getElementById('download-stl').addEventListener('click', downloadSTL);
+
+            // パネル折りたたみ機能
+            const infoHeader = document.getElementById('info-header');
+            const infoToggle = document.getElementById('info-toggle');
+            const infoPanel = document.getElementById('info');
+
+            infoHeader.addEventListener('click', () => {
+                infoPanel.classList.toggle('collapsed');
+                infoToggle.textContent = infoPanel.classList.contains('collapsed') ? 'x' : '≡';
+            });
+
+            const settingsHeader = document.querySelector('.settings-header');
+            const settingsToggle = document.querySelector('.toggle-btn');
+            const settingsPanel = document.querySelector('.settings');
+
+            settingsHeader.addEventListener('click', () => {
+                settingsPanel.classList.toggle('collapsed');
+                settingsToggle.textContent = settingsPanel.classList.contains('collapsed') ? 'x' : '≡';
+            });
+
+            // カラーテーマの変更イベント
+            document.getElementById('color-theme').addEventListener('change', function () {
+                colorTheme = this.value;
+                applyColorTheme(colorTheme);
+
+                // すでにデータがある場合は再描画
+                if (weeklyCommitData) {
+                    visualizeCommits(weeklyCommitData);
+                }
+            });
+
+            // デフォルトの表示（サンプルデータ）
+            const sampleData = generateSampleData();
+            visualizeCommits(sampleData);
+        }
+
+        function resetCamera() {
+            camera.position.set(0, 30, 50);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function applySettings() {
+            // ユーザー設定を取得
+            username = document.getElementById('user-input').value.trim();
+            year = document.getElementById('year-select').value;
+            queryType = document.getElementById('query-type').value;
+            colorTheme = document.getElementById('color-theme').value;
+
+            // カラーテーマを適用
+            applyColorTheme(colorTheme);
+
+            // データ取得
+            if (username.length > 0) {
+                fetchOSMData();
+            } else {
+                alert('有効なユーザー名を入力してください');
+            }
+        }
+
+        // OverPass APIにクエリを送信する関数
+        function fetchOSMData() {
+            // ローディング表示
+            loadingElement.style.display = 'block';
+            loadingDetailsElement.textContent = 'Querying OpenStreetMap API...';
+
+            // クエリタイプに基づいてクエリを構築
+            let query;
+            if (queryType === 'building') {
+                query = `[out:json][timeout:180];
+way[building](user:"${username}");
+out meta;`;
+            } else {
+                // シンプルなクエリ - ユーザーのすべての変更
+                query = `[out:json][timeout:180];
+(
+  node(user:"${username}");
+  way(user:"${username}");
+  relation(user:"${username}");
+);
+out meta;`;
+            }
+
+            // Overpass APIへのリクエスト
+            fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'data=' + encodeURIComponent(query)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`${response.status} ${response.statusText}: ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadingElement.style.display = 'none';
+
+                    // データの集計
+                    const aggregatedData = aggregateOverpassData(data, year);
+
+                    // データの処理と視覚化
+                    weeklyCommitData = convertToWeeklyData(aggregatedData);
+                    visualizeCommits(weeklyCommitData);
+
+                    // ユーザー名表示を更新
+                    usernameElement.textContent = `User: ${username}`;
+                    totalCommitsElement.textContent = `Total Commits: ${aggregatedData.totalCommits}`;
+                })
+                .catch(error => {
+                    loadingElement.style.display = 'none';
+                    console.error('Error fetching data:', error);
+                    alert(`データの取得中にエラーが発生しました: ${error.message}`);
+                });
+        }
+
+        // Overpass APIのレスポンスデータを集計する関数
+        function aggregateOverpassData(data, year) {
+            // 年をIntに変換
+            const targetYear = parseInt(year);
+
+            // 月ごとのコミット数
+            const monthlyCommits = Array(12).fill(0);
+
+            // 要素タイプごとのカウント
+            const typeCount = {
+                node: 0,
+                way: 0,
+                relation: 0
+            };
+
+            let totalCommits = 0;
+            let noTimestampCount = 0;
+            let otherYearCount = 0;
+
+            // データがない場合は空の結果を返す
+            if (!data.elements || data.elements.length === 0) {
+                return {
+                    monthlyCommits,
+                    typeCount,
+                    totalCommits: 0,
+                    elements: []
+                };
+            }
+
+            // 指定された年のデータのみフィルタリング
+            const filteredElements = data.elements.filter(element => {
+                // タイムスタンプが存在するか確認
+                if (!element.timestamp) {
+                    noTimestampCount++;
+                    return false;
+                }
+
+                // タイムスタンプからDateオブジェクトを作成
+                const date = new Date(element.timestamp);
+
+                // 無効な日付の場合はスキップ
+                if (isNaN(date.getTime())) {
+                    noTimestampCount++;
+                    return false;
+                }
+
+                // 指定された年のデータのみ集計
+                const elementYear = date.getFullYear();
+                if (elementYear === targetYear) {
+                    const month = date.getMonth();
+                    monthlyCommits[month]++;
+
+                    // タイプごとに集計
+                    if (element.type && typeCount[element.type] !== undefined) {
+                        typeCount[element.type]++;
+                    }
+
+                    totalCommits++;
+                    return true;
+                } else {
+                    otherYearCount++;
+                    return false;
+                }
+            });
+
+            return {
+                monthlyCommits,
+                typeCount,
+                totalCommits,
+                elements: filteredElements
+            };
+        }
+
+        // 月別データを週別データに変換する関数
+        function convertToWeeklyData(aggregatedData) {
+            // 年間の全ての日付に対応する52週×7日の配列を初期化
+            const weeklyData = Array(GRID_WEEKS).fill().map(() => Array(GRID_DAYS).fill(0));
+
+            // 元のデータがない場合は空の結果を返す
+            const elements = aggregatedData.elements || [];
+            if (elements.length === 0) {
+                return weeklyData;
+            }
+
+            // 各要素を週と曜日ごとに集計
+            elements.forEach(element => {
+                const date = new Date(element.timestamp);
+
+                // 年の最初の日から何日目かを計算
+                const firstDay = new Date(date.getFullYear(), 0, 1);
+                const dayOfYear = Math.floor((date - firstDay) / (24 * 60 * 60 * 1000));
+
+                // 週と曜日のインデックスを計算
+                const weekIndex = Math.floor(dayOfYear / 7);
+                const dayIndex = date.getDay(); // 0=日曜日, 6=土曜日
+
+                // 52週を超える場合は処理しない
+                if (weekIndex < GRID_WEEKS) {
+                    weeklyData[weekIndex][dayIndex]++;
+                }
+            });
+
+            return weeklyData;
+        }
+
+        // サンプルの週別データを生成する関数
+        function generateSampleData() {
+            const sampleData = [];
+            for (let week = 0; week < GRID_WEEKS; week++) {
+                const weekData = [];
+                for (let day = 0; day < GRID_DAYS; day++) {
+                    // 0から10までのランダムなコミット数
+                    const commitCount = Math.floor(Math.random() * 10);
+                    weekData.push(commitCount);
+                }
+                sampleData.push(weekData);
+            }
+            return sampleData;
+        }
+
+        // コミット履歴を可視化する関数
+        function visualizeCommits(commitData) {
+            // 前回のオブジェクトをクリア
+            while (contributionsGroup.children.length > 0) {
+                const child = contributionsGroup.children[0];
+                contributionsGroup.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+
+            while (baseGroup.children.length > 0) {
+                const child = baseGroup.children[0];
+                baseGroup.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+
+            // 台座を作成
+            createBase(colorTheme);
+
+            // テキストを作成
+            createText(username || 'Sample User', year);
+
+            let totalCommitCount = 0;
+            const commitCubes = [];
+
+            // グリッドの開始位置を計算（中央に配置）
+            const gridOffsetX = -GRID_WIDTH / 2;
+            const gridOffsetZ = -GRID_DEPTH / 2;
+
+            // 各日のキューブを作成
+            for (let week = 0; week < commitData.length; week++) {
+                for (let day = 0; day < commitData[week].length; day++) {
+                    const commits = commitData[week][day];
+                    totalCommitCount += commits;
+
+                    if (commits > 0) {
+                        // コミット数に基づいて高さを計算
+                        const height = MIN_HEIGHT + Math.min(commits / 10, 1) * (MAX_HEIGHT - MIN_HEIGHT);
+
+                        // キューブジオメトリの作成
+                        const geometry = new THREE.BoxGeometry(CELL_SIZE, height, CELL_SIZE);
+
+                        // コミット数に基づいた色の計算（選択したテーマに基づく）
+                        const color = getCommitColor(commits, colorTheme);
+
+                        const material = new THREE.MeshStandardMaterial({
+                            color: color,
+                            roughness: 0.7,
+                            metalness: 0.2
+                        });
+
+                        const cube = new THREE.Mesh(geometry, material);
+
+                        // グリッド内のキューブ位置（土台の上面に配置）
+                        const x = gridOffsetX + week * (CELL_SIZE + CELL_GAP);
+                        const z = gridOffsetZ + day * (CELL_SIZE + CELL_GAP);
+                        cube.position.set(x, height / 2, z);
+
+                        // キューブとコミットデータを関連付け
+                        cube.userData = {
+                            week: week,
+                            day: day,
+                            commits: commits,
+                            originalColor: color.clone()
+                        };
+
+                        cube.castShadow = true;
+                        cube.receiveShadow = true;
+
+                        contributionsGroup.add(cube);
+                        commitCubes.push(cube);
+                    }
+                }
+            }
+
+            // 全体のグループを上に移動（土台の上に配置）
+            contributionsGroup.position.y = BASE_HEIGHT / 2;
+
+            // 情報表示を更新
+            totalCommitsElement.textContent = `Total Commits: ${totalCommitCount}`;
+        }
+
+        // 台座を作成する関数
+        function createBase(theme = 'default') {
+            // 台形の底面と上面のサイズ
+            const bottomWidth = BASE_WIDTH;
+            const bottomDepth = BASE_DEPTH;
+            // 上面はグリッドよりも少し大きく設定
+            const topWidth = GRID_WIDTH + MARGIN_TOP * 2;
+            const topDepth = GRID_DEPTH + MARGIN_TOP * 2;
+
+            // 台形のジオメトリをBufferGeometryで作成
+            const baseGeometry = new THREE.BufferGeometry();
+
+            // 頂点の定義
+            const vertices = new Float32Array([
+                // 底面（下面）の頂点
+                -bottomWidth / 2, -BASE_HEIGHT / 2, -bottomDepth / 2,  // 0: 左後
+                bottomWidth / 2, -BASE_HEIGHT / 2, -bottomDepth / 2,  // 1: 右後
+                bottomWidth / 2, -BASE_HEIGHT / 2, bottomDepth / 2,  // 2: 右前
+                -bottomWidth / 2, -BASE_HEIGHT / 2, bottomDepth / 2,  // 3: 左前
+
+                // 上面の頂点
+                -topWidth / 2, BASE_HEIGHT / 2, -topDepth / 2,  // 4: 左後
+                topWidth / 2, BASE_HEIGHT / 2, -topDepth / 2,  // 5: 右後
+                topWidth / 2, BASE_HEIGHT / 2, topDepth / 2,  // 6: 右前
+                -topWidth / 2, BASE_HEIGHT / 2, topDepth / 2   // 7: 左前
+            ]);
+
+            // 面のインデックスを定義（三角形で構成）
+            const indices = [
+                // 底面
+                0, 1, 2,
+                0, 2, 3,
+
+                // 上面
+                4, 6, 5,
+                4, 7, 6,
+
+                // 側面 - 前面
+                3, 2, 6,
+                3, 6, 7,
+
+                // 側面 - 右面
+                2, 1, 5,
+                2, 5, 6,
+
+                // 側面 - 後面
+                1, 0, 4,
+                1, 4, 5,
+
+                // 側面 - 左面
+                0, 3, 7,
+                0, 7, 4
+            ];
+
+            baseGeometry.setIndex(indices);
+            baseGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            baseGeometry.computeVertexNormals();
+
+            // テーマに基づいた台座の色を設定
+            let baseColor, baseSpecular, baseShininess;
+
+            switch (theme) {
+                case 'neon':
+                    baseColor = 0x3311aa;
+                    baseSpecular = 0x8866ff;
+                    baseShininess = 100;
+                    break;
+                case 'spring':
+                    baseColor = 0xffcce0;
+                    baseSpecular = 0xffffff;
+                    baseShininess = 50;
+                    break;
+                case 'default':
+                default:
+                    baseColor = 0x78b0ff;
+                    baseSpecular = 0xaaccff;
+                    baseShininess = 40;
+            }
+
+            const baseMaterial = new THREE.MeshPhongMaterial({
+                color: baseColor,
+                specular: baseSpecular,
+                shininess: baseShininess
+            });
+
+            const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
+            baseMesh.castShadow = true;
+            baseMesh.receiveShadow = true;
+            baseGroup.add(baseMesh);
+        }
+
+        // テキストを作成する関数
+        function createText(username, year) {
+            // フォントローダーを使用して3Dテキストを作成
+            const loader = new THREE.FontLoader();
+
+            loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                // テキスト用マテリアル
+                const textMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xFFD700,
+                    specular: 0x111111,
+                    shininess: 30
+                });
+
+                // テキスト位置を計算（土台の前面に配置）
+                const textZ = BASE_DEPTH * 0.4; // 土台の前面
+
+                // 1行目（ユーザー名）
+                const usernameGeo = new THREE.TextGeometry(username, {
+                    font: font,
+                    size: 2,
+                    height: 0.5,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.1,
+                    bevelSize: 0.05,
+                    bevelSegments: 3
+                });
+
+                usernameGeo.computeBoundingBox();
+                const usernameWidth = usernameGeo.boundingBox.max.x - usernameGeo.boundingBox.min.x;
+
+                const usernameMesh = new THREE.Mesh(usernameGeo, textMaterial);
+                usernameMesh.position.set(-usernameWidth / 2, -BASE_HEIGHT / 4 + 1.5, textZ - 0.25);
+                baseGroup.add(usernameMesh);
+
+                // 2行目（年-OSM）
+                const secondLineText = `${year} - OSM Contributions`;
+                const secondLineGeo = new THREE.TextGeometry(secondLineText, {
+                    font: font,
+                    size: 1.5,
+                    height: 0.5,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.1,
+                    bevelSize: 0.05,
+                    bevelSegments: 3
+                });
+
+                secondLineGeo.computeBoundingBox();
+                const secondLineWidth = secondLineGeo.boundingBox.max.x - secondLineGeo.boundingBox.min.x;
+
+                const secondLineMesh = new THREE.Mesh(secondLineGeo, textMaterial);
+                secondLineMesh.position.set(-secondLineWidth / 2, -BASE_HEIGHT / 2 + 0.5, textZ + 0.5);
+                baseGroup.add(secondLineMesh);
+            });
+        }
+
+        // マウス移動時のイベント処理
+        function onMouseMove(event) {
+            // マウス位置を計算
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // レイキャスター更新
+            raycaster.setFromCamera(mouse, camera);
+
+            // 前回ハイライトしたセルをリセット
+            if (highlightedCell) {
+                highlightedCell.material.color.set(highlightedCell.userData.originalColor);
+                highlightedCell.material.emissive.set(0x000000);
+            }
+
+            // コミットキューブとの交差をチェック
+            const intersects = raycaster.intersectObjects(contributionsGroup.children);
+
+            if (intersects.length > 0) {
+                const cube = intersects[0].object;
+                highlightedCell = cube;
+
+                // キューブをハイライト
+                cube.material.emissive.set(0x333333);
+
+                // ホバー情報を更新
+                const { week, day, commits } = cube.userData;
+
+                /* 元々の処理は日本語対応だった
+                // 曜日名と月を取得
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thr', 'Fri', 'Sat'];
+                // const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+                const targetYear = parseInt(year);
+                const dateObj = new Date(targetYear, 0, 1);
+                dateObj.setDate(dateObj.getDate() + (week * 7) + day);
+                
+                const month = dateObj.getMonth() + 1;
+                const date = dateObj.getDate();
+                const dayName = dayNames[day];
+
+                hoverInfoElement.textContent = `${month}-${date}-(${dayName}): ${commits} commits`;
+
+                */
+
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+                const targetYear = parseInt(year);
+                const dateObj = new Date(targetYear, 0, 1);
+                dateObj.setDate(dateObj.getDate() + (week * 7) + day);
+
+                // 月と日を2桁でフォーマット
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const month = monthNames[dateObj.getMonth()];
+                const date = String(dateObj.getDate()).padStart(2, '0');
+                const dayName = dayNames[dateObj.getDay()]; // 実際の曜日を取得
+
+                hoverInfoElement.textContent = `${month}-${date} (${dayName}): ${commits} commits`;
+            } else {
+                highlightedCell = null;
+                hoverInfoElement.textContent = '';
+            }
+        }
+
+        // STLファイルをダウンロードする関数
+        function downloadSTL() {
+            try {
+                const exporter = new THREE.STLExporter();
+                const result = exporter.parse(scene);
+
+                const fileName = `${username || 'sample'}-${year}-osm-contributions.stl`;
+                saveArrayBuffer(result, fileName);
+            } catch (error) {
+                console.error('STL export error:', error);
+                alert('STLファイルのエクスポート中にエラーが発生しました: ' + error.message);
+            }
+        }
+
+        function saveArrayBuffer(buffer, fileName) {
+            const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            link.click();
+
+            setTimeout(() => {
+                URL.revokeObjectURL(link.href);
+            }, 100);
+        }
+    </script>
+</body>
+
+</html>
