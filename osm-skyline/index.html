@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,12 +30,12 @@
             max-width: 300px;
             transition: all 0.3s ease;
         }
-
+        
         #info.collapsed {
             max-height: 35px;
             overflow: hidden;
         }
-
+        
         #info-header {
             display: flex;
             justify-content: space-between;
@@ -44,7 +43,7 @@
             margin-bottom: 10px;
             cursor: pointer;
         }
-
+        
         #info-toggle {
             font-size: 16px;
             cursor: pointer;
@@ -61,12 +60,12 @@
             border-radius: 5px;
             transition: all 0.3s ease;
         }
-
+        
         .settings.collapsed {
             max-height: 35px;
             overflow: hidden;
         }
-
+        
         .settings-header {
             display: flex;
             justify-content: space-between;
@@ -74,7 +73,7 @@
             margin-bottom: 10px;
             cursor: pointer;
         }
-
+        
         .toggle-btn {
             font-size: 16px;
             cursor: pointer;
@@ -104,13 +103,12 @@
         }
     </style>
 </head>
-
 <body>
     <div id="container">
         <div id="info">
             <div id="info-header">
                 <h2 style="margin: 0; white-space: nowrap;">OSM Contributions</h2>
-                <span id="info-toggle" style="margin-left: 10px;">≡</span>
+                <span id="info-toggle" style="margin-left: 10px;">-</span>
             </div>
             <div id="info-content">
                 <p id="username">User: </p>
@@ -122,7 +120,7 @@
         <div class="settings">
             <div class="settings-header">
                 <h3 style="margin: 0;">Controls</h3>
-                <span class="toggle-btn" style="margin-left: 10px;">≡</span>
+                <span class="toggle-btn" style="margin-left: 10px;">-</span>
             </div>
             <div class="settings-content">
                 <label>
@@ -132,26 +130,9 @@
                 <label>
                     Year:
                     <select id="year-select">
-                        <option value="2025">2025</option>
                         <option value="2024">2024</option>
                         <option value="2023">2023</option>
                         <option value="2022">2022</option>
-                        <option value="2021">2021</option>
-                        <option value="2020">2020</option>
-                        <option value="2019">2019</option>
-                        <option value="2018">2018</option>
-                        <option value="2017">2017</option>
-                        <option value="2016">2016</option>
-                        <option value="2015">2015</option>
-                        <option value="2014">2014</option>
-                        <option value="2013">2013</option>
-                        <option value="2012">2012</option>
-                        <option value="2011">2011</option>
-                        <option value="2010">2010</option>
-                        <option value="2009">2009</option>
-                        <option value="2008">2008</option>
-                        <option value="2007">2007</option>
-                        <option value="2006">2006</option>
                     </select>
                 </label>
                 <label>
@@ -167,6 +148,9 @@
                         <option value="default">Default</option>
                         <option value="neon">Neon</option>
                         <option value="spring">Spring</option>
+                        <option value="summer">Summer</option>
+                        <option value="autumn">Autumn</option>
+                        <option value="winter">Winter</option>
                     </select>
                 </label>
                 <button id="apply-settings">Apply</button>
@@ -229,75 +213,151 @@
 
         // カラーテーマ機能
         function getCommitColor(commits, theme) {
-            const intensity = Math.min(commits / 10, 1);
-
-            switch (theme) {
+            // 対数スケールを使用して強度を計算
+            // 100コミットと2000コミットの差が視覚的に識別できるように調整
+            const logValue = Math.log(commits + 1);
+            const maxLogValue = Math.log(2001); // 予想最大コミット数+1
+            const intensity = logValue / maxLogValue;
+            
+            switch(theme) {
                 case 'neon':
-                    // ネオンテーマ - 明るく発光するような色
+                    // ネオンテーマ - ネオンピンク〜ネオンパープル〜ネオンブルーのグラデーション
                     return new THREE.Color(
-                        0.2 + intensity * 0.8,
-                        0.5 + intensity * 0.5,
+                        0.8 - intensity * 0.3, // 高強度でより青に
+                        0.2 + intensity * 0.3, 
                         0.8 + intensity * 0.2
                     );
-
+                    
                 case 'spring':
-                    // 春テーマ - 桜やパステルカラー
+                    // 春テーマ - 桜色のグラデーション
                     return new THREE.Color(
-                        0.9 - intensity * 0.1,
-                        0.7 + intensity * 0.2,
-                        0.7 + intensity * 0.2
+                        1.0 - intensity * 0.1,
+                        0.7 + intensity * 0.1,
+                        0.8 - intensity * 0.2
                     );
-
+                    
+                case 'summer':
+                    // 夏テーマ - 海の青〜エメラルドグリーンのグラデーション
+                    return new THREE.Color(
+                        0.0 + intensity * 0.2,
+                        0.7 + intensity * 0.3,
+                        0.9 - intensity * 0.2
+                    );
+                    
+                case 'autumn':
+                    // 秋テーマ - 紅葉の赤〜橙〜黄のグラデーション
+                    return new THREE.Color(
+                        0.8 + intensity * 0.2,
+                        0.3 + intensity * 0.4,
+                        0.0 + intensity * 0.2
+                    );
+                    
+                case 'winter':
+                    // 冬テーマ - 雪の白〜氷の青のグラデーション
+                    return new THREE.Color(
+                        0.8 + intensity * 0.2,
+                        0.9 + intensity * 0.1,
+                        1.0
+                    );
+                    
                 case 'default':
                 default:
                     // デフォルト - 緑系
                     return new THREE.Color(
-                        intensity * 0.3,
-                        0.5 + intensity * 0.5,
+                        intensity * 0.3, 
+                        0.5 + intensity * 0.5, 
                         intensity * 0.3
                     );
             }
         }
-
+        
         // テーマに基づいて背景と台座の色を設定する関数
         function applyColorTheme(theme) {
-            switch (theme) {
+            // テキストの色も適宜更新
+            let textColor = 0xFFD700; // デフォルトは金色
+            
+            switch(theme) {
                 case 'neon':
-                    // ネオンテーマ - 暗い背景に明るい台座
-                    scene.background = new THREE.Color(0x0a0a1e);
-                    // 台座の色を更新
+                    // ネオンテーマ - 暗い背景にネオンカラーの台座
+                    scene.background = new THREE.Color(0x0a0a1a);
                     if (baseGroup.children.length > 0) {
                         const baseMesh = baseGroup.children[0];
-                        baseMesh.material.color.set(0x3311aa);
-                        baseMesh.material.specular.set(0x8866ff);
+                        baseMesh.material.color.set(0xff00ff); // ネオンピンク
+                        baseMesh.material.specular.set(0xbb00ff);
                         baseMesh.material.shininess = 100;
                     }
+                    textColor = 0x00ffff; // シアン
                     break;
-
+                    
                 case 'spring':
-                    // 春テーマ - 明るい空色の背景とパステルカラーの台座
-                    scene.background = new THREE.Color(0xc5e8f5);
-                    // 台座の色を更新
+                    // 春テーマ - 淡い緑の背景とパステルピンクの台座
+                    scene.background = new THREE.Color(0xe8f5e9);
                     if (baseGroup.children.length > 0) {
                         const baseMesh = baseGroup.children[0];
-                        baseMesh.material.color.set(0xffcce0);
+                        baseMesh.material.color.set(0x90ee90); // 淡い緑（ライトグリーン）
                         baseMesh.material.specular.set(0xffffff);
                         baseMesh.material.shininess = 50;
                     }
+                    textColor = 0xff69b4; // ホットピンク
                     break;
-
+                    
+                case 'summer':
+                    // 夏テーマ - 明るい空と砂浜色の台座
+                    scene.background = new THREE.Color(0x87ceeb); // 明るい空色
+                    if (baseGroup.children.length > 0) {
+                        const baseMesh = baseGroup.children[0];
+                        baseMesh.material.color.set(0xf0e68c); // カーキ/砂色
+                        baseMesh.material.specular.set(0xffffdd);
+                        baseMesh.material.shininess = 70;
+                    }
+                    textColor = 0xff8c00; // ダークオレンジ
+                    break;
+                    
+                case 'autumn':
+                    // 秋テーマ - 落ち着いた茶系背景と枯葉色の台座
+                    scene.background = new THREE.Color(0x483c32); // 暗い茶系
+                    if (baseGroup.children.length > 0) {
+                        const baseMesh = baseGroup.children[0];
+                        baseMesh.material.color.set(0xd2691e); // チョコレート/枯葉色
+                        baseMesh.material.specular.set(0xffaa55);
+                        baseMesh.material.shininess = 30;
+                    }
+                    textColor = 0xff4500; // オレンジレッド
+                    break;
+                    
+                case 'winter':
+                    // 冬テーマ - 寒い青系背景と茶色い土台
+                    scene.background = new THREE.Color(0xb0c4de); // ライトスティールブルー
+                    if (baseGroup.children.length > 0) {
+                        const baseMesh = baseGroup.children[0];
+                        baseMesh.material.color.set(0x8b4513); // サドルブラウン/茶色
+                        baseMesh.material.specular.set(0xdddddd);
+                        baseMesh.material.shininess = 20;
+                    }
+                    textColor = 0xe0ffff; // ライトシアン
+                    break;
+                    
                 case 'default':
                 default:
                     // デフォルトテーマ
                     scene.background = new THREE.Color(0x1f2937);
-                    // 台座の色を更新
                     if (baseGroup.children.length > 0) {
                         const baseMesh = baseGroup.children[0];
                         baseMesh.material.color.set(0x78b0ff);
                         baseMesh.material.specular.set(0xaaccff);
                         baseMesh.material.shininess = 40;
                     }
+                    textColor = 0xFFD700; // 金色
                     break;
+            }
+            
+            // テキストの色を更新
+            if (baseGroup.children.length > 1) {
+                for (let i = 1; i < baseGroup.children.length; i++) {
+                    if (baseGroup.children[i].material) {
+                        baseGroup.children[i].material.color.set(textColor);
+                    }
+                }
             }
         }
 
@@ -353,7 +413,7 @@
             // 影を柔らかく
             directionalLight.shadow.radius = 2;
             scene.add(directionalLight);
-
+            
             // 補助光を追加
             const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
             fillLight.position.set(-5, 10, -10);
@@ -362,7 +422,7 @@
             // コントリビューショングループ
             contributionsGroup = new THREE.Group();
             scene.add(contributionsGroup);
-
+            
             // ベースグループ
             baseGroup = new THREE.Group();
             scene.add(baseGroup);
@@ -374,31 +434,31 @@
             document.getElementById('reset-camera').addEventListener('click', resetCamera);
             document.getElementById('apply-settings').addEventListener('click', applySettings);
             document.getElementById('download-stl').addEventListener('click', downloadSTL);
-
+            
             // パネル折りたたみ機能
             const infoHeader = document.getElementById('info-header');
             const infoToggle = document.getElementById('info-toggle');
             const infoPanel = document.getElementById('info');
-
+            
             infoHeader.addEventListener('click', () => {
                 infoPanel.classList.toggle('collapsed');
-                infoToggle.textContent = infoPanel.classList.contains('collapsed') ? 'x' : '≡';
+                infoToggle.textContent = infoPanel.classList.contains('collapsed') ? '∇' : '-';
             });
-
+            
             const settingsHeader = document.querySelector('.settings-header');
             const settingsToggle = document.querySelector('.toggle-btn');
             const settingsPanel = document.querySelector('.settings');
-
+            
             settingsHeader.addEventListener('click', () => {
                 settingsPanel.classList.toggle('collapsed');
-                settingsToggle.textContent = settingsPanel.classList.contains('collapsed') ? 'x' : '≡';
+                settingsToggle.textContent = settingsPanel.classList.contains('collapsed') ? '∇' : '-';
             });
-
+            
             // カラーテーマの変更イベント
-            document.getElementById('color-theme').addEventListener('change', function () {
+            document.getElementById('color-theme').addEventListener('change', function() {
                 colorTheme = this.value;
                 applyColorTheme(colorTheme);
-
+                
                 // すでにデータがある場合は再描画
                 if (weeklyCommitData) {
                     visualizeCommits(weeklyCommitData);
@@ -434,7 +494,7 @@
             year = document.getElementById('year-select').value;
             queryType = document.getElementById('query-type').value;
             colorTheme = document.getElementById('color-theme').value;
-
+            
             // カラーテーマを適用
             applyColorTheme(colorTheme);
 
@@ -477,33 +537,33 @@ out meta;`;
                 },
                 body: 'data=' + encodeURIComponent(query)
             })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            throw new Error(`${response.status} ${response.statusText}: ${text}`);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    loadingElement.style.display = 'none';
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`${response.status} ${response.statusText}: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadingElement.style.display = 'none';
 
-                    // データの集計
-                    const aggregatedData = aggregateOverpassData(data, year);
+                // データの集計
+                const aggregatedData = aggregateOverpassData(data, year);
 
-                    // データの処理と視覚化
-                    weeklyCommitData = convertToWeeklyData(aggregatedData);
-                    visualizeCommits(weeklyCommitData);
+                // データの処理と視覚化
+                weeklyCommitData = convertToWeeklyData(aggregatedData);
+                visualizeCommits(weeklyCommitData);
 
-                    // ユーザー名表示を更新
-                    usernameElement.textContent = `User: ${username}`;
-                    totalCommitsElement.textContent = `Total Commits: ${aggregatedData.totalCommits}`;
-                })
-                .catch(error => {
-                    loadingElement.style.display = 'none';
-                    console.error('Error fetching data:', error);
-                    alert(`データの取得中にエラーが発生しました: ${error.message}`);
-                });
+                // ユーザー名表示を更新
+                usernameElement.textContent = `User: ${username}`;
+                totalCommitsElement.textContent = `Total Commits: ${aggregatedData.totalCommits.toLocaleString()}`;
+            })
+            .catch(error => {
+                loadingElement.style.display = 'none';
+                console.error('Error fetching data:', error);
+                alert(`データの取得中にエラーが発生しました: ${error.message}`);
+            });
         }
 
         // Overpass APIのレスポンスデータを集計する関数
@@ -513,7 +573,7 @@ out meta;`;
 
             // 月ごとのコミット数
             const monthlyCommits = Array(12).fill(0);
-
+            
             // 要素タイプごとのカウント
             const typeCount = {
                 node: 0,
@@ -527,9 +587,9 @@ out meta;`;
 
             // データがない場合は空の結果を返す
             if (!data.elements || data.elements.length === 0) {
-                return {
-                    monthlyCommits,
-                    typeCount,
+                return { 
+                    monthlyCommits, 
+                    typeCount, 
                     totalCommits: 0,
                     elements: []
                 };
@@ -593,7 +653,7 @@ out meta;`;
             // 各要素を週と曜日ごとに集計
             elements.forEach(element => {
                 const date = new Date(element.timestamp);
-
+                
                 // 年の最初の日から何日目かを計算
                 const firstDay = new Date(date.getFullYear(), 0, 1);
                 const dayOfYear = Math.floor((date - firstDay) / (24 * 60 * 60 * 1000));
@@ -663,8 +723,13 @@ out meta;`;
                     totalCommitCount += commits;
 
                     if (commits > 0) {
-                        // コミット数に基づいて高さを計算
-                        const height = MIN_HEIGHT + Math.min(commits / 10, 1) * (MAX_HEIGHT - MIN_HEIGHT);
+                        // 対数スケールを使用してコミット数に基づいて高さを計算
+                        // Math.log(1) = 0なので、1を加えて最小値が確保されるようにする
+                        const logValue = Math.log(commits + 1);
+                        // 最大予想コミット数の対数値（例: log(2001) ≈ 7.6）で正規化
+                        const maxLogValue = Math.log(2001); // 予想最大コミット数+1
+                        // 正規化された値を高さのレンジにマッピング
+                        const height = MIN_HEIGHT + (logValue / maxLogValue) * (MAX_HEIGHT - MIN_HEIGHT);
 
                         // キューブジオメトリの作成
                         const geometry = new THREE.BoxGeometry(CELL_SIZE, height, CELL_SIZE);
@@ -706,7 +771,7 @@ out meta;`;
             contributionsGroup.position.y = BASE_HEIGHT / 2;
 
             // 情報表示を更新
-            totalCommitsElement.textContent = `Total Commits: ${totalCommitCount}`;
+            totalCommitsElement.textContent = `Total Commits: ${totalCommitCount.toLocaleString()}`;
         }
 
         // 台座を作成する関数
@@ -717,69 +782,84 @@ out meta;`;
             // 上面はグリッドよりも少し大きく設定
             const topWidth = GRID_WIDTH + MARGIN_TOP * 2;
             const topDepth = GRID_DEPTH + MARGIN_TOP * 2;
-
+            
             // 台形のジオメトリをBufferGeometryで作成
             const baseGeometry = new THREE.BufferGeometry();
-
+            
             // 頂点の定義
             const vertices = new Float32Array([
                 // 底面（下面）の頂点
-                -bottomWidth / 2, -BASE_HEIGHT / 2, -bottomDepth / 2,  // 0: 左後
-                bottomWidth / 2, -BASE_HEIGHT / 2, -bottomDepth / 2,  // 1: 右後
-                bottomWidth / 2, -BASE_HEIGHT / 2, bottomDepth / 2,  // 2: 右前
-                -bottomWidth / 2, -BASE_HEIGHT / 2, bottomDepth / 2,  // 3: 左前
-
+                -bottomWidth/2, -BASE_HEIGHT/2, -bottomDepth/2,  // 0: 左後
+                 bottomWidth/2, -BASE_HEIGHT/2, -bottomDepth/2,  // 1: 右後
+                 bottomWidth/2, -BASE_HEIGHT/2,  bottomDepth/2,  // 2: 右前
+                -bottomWidth/2, -BASE_HEIGHT/2,  bottomDepth/2,  // 3: 左前
+                
                 // 上面の頂点
-                -topWidth / 2, BASE_HEIGHT / 2, -topDepth / 2,  // 4: 左後
-                topWidth / 2, BASE_HEIGHT / 2, -topDepth / 2,  // 5: 右後
-                topWidth / 2, BASE_HEIGHT / 2, topDepth / 2,  // 6: 右前
-                -topWidth / 2, BASE_HEIGHT / 2, topDepth / 2   // 7: 左前
+                -topWidth/2, BASE_HEIGHT/2, -topDepth/2,  // 4: 左後
+                 topWidth/2, BASE_HEIGHT/2, -topDepth/2,  // 5: 右後
+                 topWidth/2, BASE_HEIGHT/2,  topDepth/2,  // 6: 右前
+                -topWidth/2, BASE_HEIGHT/2,  topDepth/2   // 7: 左前
             ]);
-
+            
             // 面のインデックスを定義（三角形で構成）
             const indices = [
                 // 底面
                 0, 1, 2,
                 0, 2, 3,
-
+                
                 // 上面
                 4, 6, 5,
                 4, 7, 6,
-
+                
                 // 側面 - 前面
                 3, 2, 6,
                 3, 6, 7,
-
+                
                 // 側面 - 右面
                 2, 1, 5,
                 2, 5, 6,
-
+                
                 // 側面 - 後面
                 1, 0, 4,
                 1, 4, 5,
-
+                
                 // 側面 - 左面
                 0, 3, 7,
                 0, 7, 4
             ];
-
+            
             baseGeometry.setIndex(indices);
             baseGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
             baseGeometry.computeVertexNormals();
-
+            
             // テーマに基づいた台座の色を設定
             let baseColor, baseSpecular, baseShininess;
-
-            switch (theme) {
+            
+            switch(theme) {
                 case 'neon':
-                    baseColor = 0x3311aa;
-                    baseSpecular = 0x8866ff;
+                    baseColor = 0xff00ff; // ネオンピンク
+                    baseSpecular = 0xbb00ff;
                     baseShininess = 100;
                     break;
                 case 'spring':
-                    baseColor = 0xffcce0;
+                    baseColor = 0x90ee90; // 淡い緑（ライトグリーン）
                     baseSpecular = 0xffffff;
                     baseShininess = 50;
+                    break;
+                case 'summer':
+                    baseColor = 0xf0e68c; // カーキ/砂色
+                    baseSpecular = 0xffffdd;
+                    baseShininess = 70;
+                    break;
+                case 'autumn':
+                    baseColor = 0xd2691e; // チョコレート/枯葉色
+                    baseSpecular = 0xffaa55;
+                    baseShininess = 30;
+                    break;
+                case 'winter':
+                    baseColor = 0x8b4513; // サドルブラウン/茶色
+                    baseSpecular = 0xdddddd; 
+                    baseShininess = 20;
                     break;
                 case 'default':
                 default:
@@ -787,13 +867,13 @@ out meta;`;
                     baseSpecular = 0xaaccff;
                     baseShininess = 40;
             }
-
+            
             const baseMaterial = new THREE.MeshPhongMaterial({
                 color: baseColor,
                 specular: baseSpecular,
                 shininess: baseShininess
             });
-
+            
             const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
             baseMesh.castShadow = true;
             baseMesh.receiveShadow = true;
@@ -804,18 +884,38 @@ out meta;`;
         function createText(username, year) {
             // フォントローダーを使用して3Dテキストを作成
             const loader = new THREE.FontLoader();
-
-            loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-                // テキスト用マテリアル
+            
+            loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function(font) {
+                // テキスト用マテリアル - テーマに基づいて色を選択
+                let textColor = 0xFFD700; // デフォルトは金色
+                
+                switch(colorTheme) {
+                    case 'neon':
+                        textColor = 0x00ffff; // シアン
+                        break;
+                    case 'spring':
+                        textColor = 0xff69b4; // ホットピンク
+                        break;
+                    case 'summer':
+                        textColor = 0xff8c00; // ダークオレンジ
+                        break;
+                    case 'autumn':
+                        textColor = 0xff4500; // オレンジレッド
+                        break;
+                    case 'winter':
+                        textColor = 0xe0ffff; // ライトシアン
+                        break;
+                }
+                
                 const textMaterial = new THREE.MeshPhongMaterial({
-                    color: 0xFFD700,
+                    color: textColor,
                     specular: 0x111111,
                     shininess: 30
                 });
-
+                
                 // テキスト位置を計算（土台の前面に配置）
                 const textZ = BASE_DEPTH * 0.4; // 土台の前面
-
+                
                 // 1行目（ユーザー名）
                 const usernameGeo = new THREE.TextGeometry(username, {
                     font: font,
@@ -827,14 +927,14 @@ out meta;`;
                     bevelSize: 0.05,
                     bevelSegments: 3
                 });
-
+                
                 usernameGeo.computeBoundingBox();
                 const usernameWidth = usernameGeo.boundingBox.max.x - usernameGeo.boundingBox.min.x;
-
+                
                 const usernameMesh = new THREE.Mesh(usernameGeo, textMaterial);
-                usernameMesh.position.set(-usernameWidth / 2, -BASE_HEIGHT / 4 + 1.5, textZ - 0.25);
+                usernameMesh.position.set(-usernameWidth/2, -BASE_HEIGHT/4 + 1.5, textZ - 0.25);
                 baseGroup.add(usernameMesh);
-
+                
                 // 2行目（年-OSM）
                 const secondLineText = `${year} - OSM Contributions`;
                 const secondLineGeo = new THREE.TextGeometry(secondLineText, {
@@ -847,12 +947,12 @@ out meta;`;
                     bevelSize: 0.05,
                     bevelSegments: 3
                 });
-
+                
                 secondLineGeo.computeBoundingBox();
                 const secondLineWidth = secondLineGeo.boundingBox.max.x - secondLineGeo.boundingBox.min.x;
-
+                
                 const secondLineMesh = new THREE.Mesh(secondLineGeo, textMaterial);
-                secondLineMesh.position.set(-secondLineWidth / 2, -BASE_HEIGHT / 2 + 0.5, textZ + 0.5);
+                secondLineMesh.position.set(-secondLineWidth/2, -BASE_HEIGHT/2 + 0.5, textZ + 0.5);
                 baseGroup.add(secondLineMesh);
             });
         }
@@ -884,11 +984,9 @@ out meta;`;
 
                 // ホバー情報を更新
                 const { week, day, commits } = cube.userData;
-
-                /* 元々の処理は日本語対応だった
+                
                 // 曜日名と月を取得
-                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thr', 'Fri', 'Sat'];
-                // const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+                const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
                 const targetYear = parseInt(year);
                 const dateObj = new Date(targetYear, 0, 1);
                 dateObj.setDate(dateObj.getDate() + (week * 7) + day);
@@ -897,23 +995,7 @@ out meta;`;
                 const date = dateObj.getDate();
                 const dayName = dayNames[day];
 
-                hoverInfoElement.textContent = `${month}-${date}-(${dayName}): ${commits} commits`;
-
-                */
-
-                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-                const targetYear = parseInt(year);
-                const dateObj = new Date(targetYear, 0, 1);
-                dateObj.setDate(dateObj.getDate() + (week * 7) + day);
-
-                // 月と日を2桁でフォーマット
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const month = monthNames[dateObj.getMonth()];
-                const date = String(dateObj.getDate()).padStart(2, '0');
-                const dayName = dayNames[dateObj.getDay()]; // 実際の曜日を取得
-
-                hoverInfoElement.textContent = `${month}-${date} (${dayName}): ${commits} commits`;
+                hoverInfoElement.textContent = `${month}月${date}日(${dayName}): ${commits.toLocaleString()} commits`;
             } else {
                 highlightedCell = null;
                 hoverInfoElement.textContent = '';
@@ -925,7 +1007,7 @@ out meta;`;
             try {
                 const exporter = new THREE.STLExporter();
                 const result = exporter.parse(scene);
-
+                
                 const fileName = `${username || 'sample'}-${year}-osm-contributions.stl`;
                 saveArrayBuffer(result, fileName);
             } catch (error) {
@@ -933,19 +1015,18 @@ out meta;`;
                 alert('STLファイルのエクスポート中にエラーが発生しました: ' + error.message);
             }
         }
-
+        
         function saveArrayBuffer(buffer, fileName) {
             const blob = new Blob([buffer], { type: 'application/octet-stream' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = fileName;
             link.click();
-
+            
             setTimeout(() => {
                 URL.revokeObjectURL(link.href);
             }, 100);
         }
     </script>
 </body>
-
 </html>
