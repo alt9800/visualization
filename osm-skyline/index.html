@@ -519,7 +519,7 @@
             if (username.length > 0) {
                 fetchOSMData();
             } else {
-                alert('有効なユーザー名を入力してください');
+                alert('有効なユーザー名を入力してください。 \nPlease enter a valid username.');
             }
         }
 
@@ -694,8 +694,8 @@ out meta;`;
             for (let week = 0; week < GRID_WEEKS; week++) {
                 const weekData = [];
                 for (let day = 0; day < GRID_DAYS; day++) {
-                    // 0から10までのランダムなコミット数
-                    const commitCount = Math.floor(Math.random() * 10);
+                    // 0から1000までのランダムなコミット数
+                    const commitCount = Math.floor(Math.random() * 100);
                     weekData.push(commitCount);
                 }
                 sampleData.push(weekData);
